@@ -21,4 +21,5 @@ SOURCES += main.cpp \
 HEADERS += \
     filemanip.hpp \
     recstrategy.hpp \
-    latentfactors.hpp
+    latentfactors.hpp \
+    similarity.hpp

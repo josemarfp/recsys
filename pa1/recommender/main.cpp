@@ -7,6 +7,7 @@
 #include "filemanip.hpp"
 #include "recstrategy.hpp"
 #include "latentfactors.hpp"
+#include "similarity.hpp"
 
 using namespace std;
 
@@ -56,6 +57,8 @@ int main(int argc, char *argv[])
     //runStrategy(users_items, targets, userAvgRating);
 
     //coutRecommendation(targets);
+
+    double x = pearson(ratings[1], ratings[2]);
 
     // finish time
     end = std::chrono::high_resolution_clock::now();
