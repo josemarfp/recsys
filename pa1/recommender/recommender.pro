@@ -1,4 +1,5 @@
 QT -= gui
+QT += testlib
 
 CONFIG += c++14 console
 CONFIG -= app_bundle
@@ -16,7 +17,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += main.cpp \
     filemanip.cpp \
-    recstrategy.cpp
+    recstrategy.cpp \
+    testsimilarity.cpp
 
 HEADERS += \
     filemanip.hpp \
