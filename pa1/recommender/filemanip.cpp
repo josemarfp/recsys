@@ -37,6 +37,7 @@ int file2Container(
 
 void coutRecommendation(unordered_map<int, unordered_map<int, tuple<double, long>>>& users_items)
 {
+    cout << "UserId:ItemId,Prediction" << endl;
     for (auto it = users_items.begin(); it != users_items.end(); it++)
         for (auto it2 = it->second.begin(); it2 != it->second.end(); it2++)
             cout << "u" << setfill('0') << setw(7) << it->first

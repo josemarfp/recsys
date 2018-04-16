@@ -3,7 +3,8 @@
 #include <unordered_map>
 #include <map>
 #include <list>
-#include <ctime>
+#include <time.h>
+#include <numeric>
 
 #include "filemanip.hpp"
 #include "recstrategy.hpp"
@@ -11,6 +12,26 @@
 #include "similarity.hpp"
 
 using namespace std;
+
+void randomize
+(
+    unordered_map<int, unordered_map<int, tuple<double, long>>>& targets
+)
+{
+    for (auto target : targets)
+    {
+        for (auto item_i : target.second)
+        {
+            /* initialize random seed: */
+            if (get<0>(targets[target.first][item_i.first]) == 0)
+            {
+                srand(time(nullptr));
+                targets[target.first][item_i.first] = make_pair((double) (rand() % (100+1))/10, clock());
+            }
+        }
+    }
+
+}
 
 void nearest_neighbors
 (
@@ -20,7 +41,7 @@ void nearest_neighbors
     int metric
 )
 {
-    unsigned int neighbors = 30;
+    unsigned int neighbors = 10;
 
     for (auto target : targets)
     {
@@ -30,19 +51,20 @@ void nearest_neighbors
             switch (metric) {
                 case 1:
                 {
-                    targets[target.first][item_i.first] = make_pair(knn(user_item_ratings, item_user_ratings, neighbors, nearest, target.first, item_i, pearson), clock());
+                    double rui = knn(user_item_ratings, item_user_ratings, neighbors, nearest, target.first, item_i, pearson);
+                    if ((rui != 0) && (get<0>(targets[target.first][item_i.first]) == 0))
+                        targets[target.first][item_i.first] = make_pair(rui, clock());
                     break;
                 }
                 case 2:
                 {
-                    targets[target.first][item_i.first] = make_pair(knn(user_item_ratings, item_user_ratings, neighbors, nearest, target.first, item_i, cosine_similarity), clock());
+                    double rui = knn(user_item_ratings, item_user_ratings, neighbors, nearest, target.first, item_i, cosine_similarity);
+                    if ((rui != 0) && (get<0>(targets[target.first][item_i.first]) == 0))
+                        targets[target.first][item_i.first] = make_pair(rui, clock());
                     break;
                 }
             }
         }
-
-        //for (auto it=nearest.rbegin()++; it != nearest.rend(); ++it)
-        //    cout << it->second << ":" << it->first << endl;
     }
 
 }
@@ -50,20 +72,22 @@ void nearest_neighbors
 void latent_factors
 (
     unordered_map<int, unordered_map<int, tuple<double, long>>>& ratings,
+    unordered_map<int, unordered_map<int, tuple<double, long>>>& ratingsT,
     unordered_map<int, unordered_map<int, tuple<double, long>>>& targets,
-    int metric,
-    int lines
+    unsigned int metric,
+    unsigned int lines
 )
 {
     // Latent Factors Model
     unordered_map<int, unordered_map<int, double>> P;
     unordered_map<int, unordered_map<int, double>> Q;
-    int k{4}; // number of latent factors
+    unsigned int k{7}; // number of latent factors
     double lambda{0.003};
     double gamma{0.02};
-    int steps = 10;
+    unsigned int steps = 10;
 
-    initializeLatentFactors(ratings, P, Q, k);
+    initializeLatentFactors(ratings,  P, k);
+    initializeLatentFactors(ratingsT, Q, k);
 
     switch (metric) {
         case 1:
@@ -73,8 +97,13 @@ void latent_factors
         }
     }
 
-    //cout << error(ratings, P, Q, lambda) << endl;
-    //cout << rmse(ratings, P, Q, lambda, lines, error) << endl;
+    for (auto target : targets)
+        for (auto item_i : target.second)
+        {
+            double rui{0};
+            dot(P[target.first], Q[item_i.first], rui);
+            targets[target.first][item_i.first] = make_pair(rui, clock());
+        }
 }
 
 /*!
@@ -97,9 +126,9 @@ int main(int argc, char *argv[])
     // Default parameter
     string ratings_fileName{argc >= 3 ? argv[1] : "./../dataset/ratings.csv"};
     string targets_fileName{argc >= 3 ? argv[2] : "./../dataset/targets.csv"};
-    int method = argc >= 3 ? std::stoi(argv[3]) : 1;
-    int metric = argc >= 3 ? std::stoi(argv[4]) : 2;
-    bool itemBased = argc >= 3 ? std::stoi(argv[5]) == 1 : false;
+    vector<int> methods = {2}; // {1, 0, 3};
+    vector<int> metrics = {1}; // {2, 2, 0};
+    bool itemBased = false;
 
     // Load data
     string submission_fileName{"./../dataset/submission-rand.csv"};
@@ -108,26 +137,41 @@ int main(int argc, char *argv[])
     unordered_map<int, unordered_map<int, tuple<double, long>>> item_user_ratings{};
     unordered_map<int, unordered_map<int, tuple<double, long>>> targets{};
 
-    int users = file2Container(user_item_ratings, ratings_fileName, parseRatings, false);
-    int items = file2Container(item_user_ratings, ratings_fileName, parseRatings, true);
+    int users = file2Container(user_item_ratings, ratings_fileName, parseRatings, itemBased);
+    item_user_ratings = transpose(user_item_ratings);
     file2Container(targets, targets_fileName, parseTargets, itemBased);
 
-    // Run desired method
-    switch (method)
+    for (unsigned int i = 0; i < methods.size(); i++)
     {
-        case 1:
+        // Run desired method
+        switch (methods[i])
         {
-            nearest_neighbors(user_item_ratings, item_user_ratings, targets, metric);
-            break;
-        }
-        case 2:
-        {
-            latent_factors(user_item_ratings, targets, metric, users);
-            break;
-        }
-        default:
-        {
-            break;
+            case 0:
+            {
+                targets = transpose(targets);
+                nearest_neighbors(item_user_ratings, user_item_ratings, targets, metrics[i]);
+                targets = transpose(targets);
+                break;
+            }
+            case 1:
+            {
+                nearest_neighbors(user_item_ratings, item_user_ratings, targets, metrics[i]);
+                break;
+            }
+            case 2:
+            {
+                latent_factors(user_item_ratings, item_user_ratings, targets, metrics[i], users);
+                break;
+            }
+            case 3:
+            {
+                randomize(targets);
+                break;
+            }
+            default:
+            {
+                break;
+            }
         }
     }
 

@@ -40,4 +40,17 @@ tuple<int, int, tuple<double, long>> parseRatings(string &line);
  */
 void coutRecommendation(unordered_map<int, unordered_map<int, tuple<double, long>>>& users_items);
 
+/*!
+ *
+ */
+template <typename T>
+T transpose(T& A)
+{
+    T AT;
+    for (auto it = A.begin(); it != A.end(); it++)
+        for (auto it2 = it->second.begin(); it2 != it->second.end(); it2++)
+            AT[it2->first][it->first] = A[it->first][it2->first];
+    return AT;
+}
+
 #endif // FILNEMANIP_HPP

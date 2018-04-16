@@ -91,7 +91,7 @@ double knn (T& user_item_ratings, T& item_user_ratings, U& k, V& result, Y& id, 
             result.erase(result.begin(), ++it2);
         }
 
-        num += sim * get<0>(owned_item);
+        num += sim * get<0>(owned_item.second);
         dem += sim;
     }
 
