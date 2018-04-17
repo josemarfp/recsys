@@ -9,7 +9,7 @@
 using namespace std;
 
 template <typename T>
-double pearson(T& A, T& B)
+double pearson(const T& A, const T& B)
 {
     double rai{0};
     double rbi{0};
@@ -17,23 +17,31 @@ double pearson(T& A, T& B)
     double mean_a{0};
     double mean_b{0};
 
-    for(auto it=A.begin(); it!=A.end(); it++)
-        mean_a += get<0>(A[it->first]);
+    for(auto it=A.begin(); it!=A.end(); ++it)
+        mean_a += it->first;
     mean_a /= A.size();
 
-    for(auto it=B.begin(); it!=B.end(); it++)
-        mean_b += get<0>(B[it->first]);
+    for(auto it=B.begin(); it!=B.end(); ++it)
+        mean_b += it->first;
     mean_b /= B.size();
 
-    for(auto it=B.begin(); it!=B.end(); it++)
+    for(auto it=B.begin(); it!=B.end(); ++it)
     {
         if (A.find(it->first) != A.end())
         {
-            double aux1 = get<0>(A[it->first]) - mean_a;
-            double aux2 = get<0>(B[it->first]) - mean_b;
-            rai  += aux1 * aux1;
-            rbi  += aux2 * aux2;
-            rabi += aux1 * aux2;
+            double auxa;
+            long auxatime;
+            tie(auxa, auxatime) = A.at(it->first);
+            auxa -= mean_a;
+
+            double auxb;
+            long auxbtime;
+            tie(auxb, auxbtime) = B.at(it->first);
+            auxb -= mean_b;
+
+            rai  += auxa * auxa;
+            rbi  += auxb * auxb;
+            rabi += auxa * auxb;
         }
     }
 
@@ -44,18 +52,24 @@ double pearson(T& A, T& B)
 }
 
 template <typename T>
-double cosine_similarity(T& A, T& B)
+double cosine_similarity(const T& A, const T& B)
 {
     double rai{0};
     double rbi{0};
     double rabi{0};
 
-    for(auto it=B.begin(); it!=B.end(); it++)
+    for(auto it=B.begin(); it!=B.end(); ++it)
     {
         if (A.find(it->first) != A.end())
         {
-            double aux1 = get<0>(A[it->first]);
-            double aux2 = get<0>(B[it->first]);
+            double aux1;
+            long aux1time;
+            tie(aux1, aux1time) = A.at(it->first);
+
+            double aux2;
+            long aux2time;
+            tie(aux2, aux2time) = B.at(it->first);
+
             rai  += aux1 * aux1;
             rbi  += aux2 * aux2;
             rabi += aux1 * aux2;
@@ -69,7 +83,7 @@ double cosine_similarity(T& A, T& B)
 }
 
 template <typename T, typename U, typename V, typename W, typename Y>
-double knn (T& user_item_ratings, T& item_user_ratings, U& k, V& result, Y& id, W& target, double (*f)(unordered_map<int, tuple<double, long>>&, unordered_map<int, tuple<double, long>>&))
+double knn (T& user_item_ratings, T& item_user_ratings, U& k, V& result, Y& id, W& target, double (*f)(const unordered_map<int, tuple<double, long>>&, const unordered_map<int, tuple<double, long>>&))
 {
     auto owned_items = user_item_ratings[id];
     //auto owned_users = item_user_ratings[target.first];

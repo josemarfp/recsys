@@ -16,7 +16,8 @@ using namespace std;
 int file2Container(unordered_map<int, unordered_map<int, tuple<double, long>>> & container,
                    string &fileName,
                    tuple<int, int, tuple<double, long>> (*f)(string &line),
-                   bool items_users);
+                   bool items_users,
+                   long min_date);
 
 /*!
  * \brief Parses a line in ratings.csv file.

@@ -8,103 +8,9 @@
 
 #include "filemanip.hpp"
 #include "recstrategy.hpp"
-#include "latentfactors.hpp"
-#include "similarity.hpp"
+
 
 using namespace std;
-
-void randomize
-(
-    unordered_map<int, unordered_map<int, tuple<double, long>>>& targets
-)
-{
-    for (auto target : targets)
-    {
-        for (auto item_i : target.second)
-        {
-            /* initialize random seed: */
-            if (get<0>(targets[target.first][item_i.first]) == 0)
-            {
-                srand(time(nullptr));
-                targets[target.first][item_i.first] = make_pair((double) (rand() % (100+1))/10, clock());
-            }
-        }
-    }
-
-}
-
-void nearest_neighbors
-(
-    unordered_map<int, unordered_map<int, tuple<double, long>>>& user_item_ratings,
-    unordered_map<int, unordered_map<int, tuple<double, long>>>& item_user_ratings,
-    unordered_map<int, unordered_map<int, tuple<double, long>>>& targets,
-    int metric
-)
-{
-    unsigned int neighbors = 10;
-
-    for (auto target : targets)
-    {
-        for (auto item_i : target.second)
-        {
-            multimap<double, int> nearest;
-            switch (metric) {
-                case 1:
-                {
-                    double rui = knn(user_item_ratings, item_user_ratings, neighbors, nearest, target.first, item_i, pearson);
-                    if ((rui != 0) && (get<0>(targets[target.first][item_i.first]) == 0))
-                        targets[target.first][item_i.first] = make_pair(rui, clock());
-                    break;
-                }
-                case 2:
-                {
-                    double rui = knn(user_item_ratings, item_user_ratings, neighbors, nearest, target.first, item_i, cosine_similarity);
-                    if ((rui != 0) && (get<0>(targets[target.first][item_i.first]) == 0))
-                        targets[target.first][item_i.first] = make_pair(rui, clock());
-                    break;
-                }
-            }
-        }
-    }
-
-}
-
-void latent_factors
-(
-    unordered_map<int, unordered_map<int, tuple<double, long>>>& ratings,
-    unordered_map<int, unordered_map<int, tuple<double, long>>>& ratingsT,
-    unordered_map<int, unordered_map<int, tuple<double, long>>>& targets,
-    unsigned int metric,
-    unsigned int lines
-)
-{
-    // Latent Factors Model
-    unordered_map<int, unordered_map<int, double>> P;
-    unordered_map<int, unordered_map<int, double>> Q;
-    unsigned int k{7}; // number of latent factors
-    double lambda{0.003};
-    double gamma{0.02};
-    unsigned int steps = 10;
-
-    initializeLatentFactors(ratings,  P, k);
-    initializeLatentFactors(ratingsT, Q, k);
-
-    switch (metric) {
-        case 1:
-        {
-            sgd(ratings, P, Q, lambda, gamma, lines, steps, error);
-            break;
-        }
-    }
-
-    for (auto target : targets)
-        for (auto item_i : target.second)
-        {
-            double rui{0};
-            dot(P[target.first], Q[item_i.first], rui);
-            targets[target.first][item_i.first] = make_pair(rui, clock());
-        }
-}
 
 /*!
  * \brief main
@@ -126,8 +32,9 @@ int main(int argc, char *argv[])
     // Default parameter
     string ratings_fileName{argc >= 3 ? argv[1] : "./../dataset/ratings.csv"};
     string targets_fileName{argc >= 3 ? argv[2] : "./../dataset/targets.csv"};
-    vector<int> methods = {2}; // {1, 0, 3};
-    vector<int> metrics = {1}; // {2, 2, 0};
+    vector<int> methods = {2, 5, 4, 6}; // {1, 0, 3};
+    vector<int> metrics = {1, 0, 0, 0}; // {2, 2, 0};
+    long min_date = 1382915585;
     bool itemBased = false;
 
     // Load data
@@ -137,9 +44,9 @@ int main(int argc, char *argv[])
     unordered_map<int, unordered_map<int, tuple<double, long>>> item_user_ratings{};
     unordered_map<int, unordered_map<int, tuple<double, long>>> targets{};
 
-    int users = file2Container(user_item_ratings, ratings_fileName, parseRatings, itemBased);
+    int users = file2Container(user_item_ratings, ratings_fileName, parseRatings, itemBased, min_date);
     item_user_ratings = transpose(user_item_ratings);
-    file2Container(targets, targets_fileName, parseTargets, itemBased);
+    file2Container(targets, targets_fileName, parseTargets, itemBased, 0);
 
     for (unsigned int i = 0; i < methods.size(); i++)
     {
@@ -166,6 +73,23 @@ int main(int argc, char *argv[])
             case 3:
             {
                 randomize(targets);
+                break;
+            }
+            case 4:
+            {
+                runStrategy(item_user_ratings, targets, userAvgRating);
+                break;
+            }
+            case 5:
+            {
+                targets = transpose(targets);
+                runStrategy(user_item_ratings, targets, itemAvgRating);
+                targets = transpose(targets);
+                break;
+            }
+            case 6:
+            {
+                runStrategy(user_item_ratings, targets, globalAvgRating);
                 break;
             }
             default:

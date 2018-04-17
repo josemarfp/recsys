@@ -10,7 +10,8 @@ int file2Container(
         unordered_map<int, unordered_map<int, tuple<double, long>>>& container,
         string &fileName,
         tuple<int, int, tuple<double, long>> (*f)(string &line),
-        bool items_users = false
+        bool items_users = false,
+        long min_date = 0
         )
 {
     ifstream refFile(fileName);
@@ -21,18 +22,24 @@ int file2Container(
     while(getline(refFile, currentLine)) {
         if (lines > 0) // considera que a linha zero é o cabeçalho.
         {
-            auto parsedLine = f(currentLine);     //!! stage 2
-            if (items_users)
-                container[std::get<1>(parsedLine)][std::get<0>(parsedLine)] = std::get<2>(parsedLine);
-            else
-                container[std::get<0>(parsedLine)][std::get<1>(parsedLine)] = std::get<2>(parsedLine);
+            auto parsedLine = f(currentLine);
+            long date = get<1>(std::get<2>(parsedLine));
+            if (date >= min_date)
+            {
+                if (items_users)
+                    container[std::get<1>(parsedLine)][std::get<0>(parsedLine)] = std::get<2>(parsedLine);
+                else
+                    container[std::get<0>(parsedLine)][std::get<1>(parsedLine)] = std::get<2>(parsedLine);
+                lines++;
+            }
         }
-        lines++;
+        else lines++;
+
     }
 
     refFile.close();
         
-    return lines;
+    return lines--;
 }
 
 void coutRecommendation(unordered_map<int, unordered_map<int, tuple<double, long>>>& users_items)
@@ -67,8 +74,8 @@ tuple<int, int, tuple<double, long>> parseRatings(string &line)
     // 20-30 or 19-29: timestamp
     int user = std::stoi(line.substr(1, 7));  // Novo jeito de fazer o cast para inteiro
     int item = std::stoi(line.substr(10, 7)); // no cpp moderno
-    double prediction = line.substr(19, 1) == ";" ? std::stoi(line.substr(18, 1)) : std::stoi(line.substr(18, 2));
-    long timestamp = line.substr(19, 1) == ";" ? std::stod(line.substr(20, 10)) : std::stod(line.substr(21, 10));
+    double prediction = line.substr(19, 1) == "," ? std::stoi(line.substr(18, 1)) : std::stoi(line.substr(18, 2));
+    long timestamp = line.substr(19, 1) == "," ? std::stod(line.substr(20, 10)) : std::stod(line.substr(21, 10));
 
     return std::make_tuple(user, item, std::make_tuple(prediction, timestamp));
 }
